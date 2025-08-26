@@ -1,0 +1,362 @@
+<!-- <!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>통합 실습: 포켓몬 검색기</title>
+    <style>
+      body {
+        font-family: sans-serif;
+      }
+      .container {
+        max-width: 500px;
+        margin: 40px auto;
+        padding: 20px;
+        border: 1px solid lightgray;
+        border-radius: 8px;
+        text-align: center;
+      }
+      input {
+        padding: 10px;
+        width: 60%;
+        margin-right: 10px;
+      }
+      button {
+        padding: 10px;
+      }
+      #result {
+        margin-top: 20px;
+      }
+      #result h2 {
+        margin: 10px 0;
+      }
+      #result img {
+        width: 150px;
+        height: 150px;
+        background-color: ghostwhite;
+        border-radius: 50%;
+      }
+      .type {
+        display: inline-block;
+        padding: 5px 10px;
+        margin: 5px;
+        border-radius: 15px;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>포켓몬 정보 조회</h1>
+      <input
+        type="text"
+        id="pokemon-input"
+        placeholder="포켓몬 이름 또는 번호 입력"
+      />
+      <button id="search-btn">정보 조회</button>
+      <div id="result"></div>
+    </div>
+
+    <script>
+      const searchBtn = document.getElementById("search-btn");
+      const pokemonInput = document.getElementById("pokemon-input");
+      const resultDiv = document.getElementById("result");
+
+      // 버튼 클릭 시 async 함수 실행
+      searchBtn.addEventListener("click", async () => {
+        // 1. 사용자 입력값 가져오기 (소문자로 변환)
+        const pokemonNameOrId = pokemonInput.value.toLowerCase();
+        if (!pokemonNameOrId) {
+          alert("포켓몬 이름 또는 번호를 입력해주세요!");
+          return;
+        }
+
+        // 2. API URL 조합
+        const apiUrl = `https://pokeapi.co/api/v2/pokemon/${pokemonNameOrId}`;
+
+        try {
+          // 로딩 메시지 표시
+          resultDiv.innerHTML = "<p>데이터를 불러오는 중...</p>";
+
+          // 3. await: fetch 요청이 끝날 때까지 기다림
+          const response = await fetch(apiUrl);
+
+          // 4. 응답 상태 체크 (포켓몬을 찾지 못한 경우 등)
+          if (!response.ok) {
+            throw new Error("해당 포켓몬을 찾을 수 없습니다.");
+          }
+
+          // 5. await: JSON 파싱이 끝날 때까지 기다림
+          const pokemonData = await response.json();
+
+          // 6. 받아온 데이터로 화면 그리기
+          renderPokemon(pokemonData);
+        } catch (error) {
+          // 7. try 블록 내에서 발생한 모든 에러(네트워크, 파싱 등)를 여기서 처리
+          console.error("에러 발생:", error);
+          resultDiv.innerHTML = `<p style="color: red;">${error.message}</p>`;
+        }
+      });
+
+      // 포켓몬 데이터를 받아 HTML로 변환하여 화면에 출력하는 함수
+      function renderPokemon(data) {
+        // 타입 정보를 HTML 문자열로 변환 (예: ['grass', 'poison'] -> '<span class="type">grass</span>...')
+        const typesHtml = data.types
+          .map((typeInfo) => {
+            return `<span class="type" style="background-color: ${getTypeColor(
+              typeInfo.type.name
+            )}">${typeInfo.type.name}</span>`;
+          })
+          .join(" ");
+
+        resultDiv.innerHTML = `
+                <h2>${
+                  data.name.charAt(0).toUpperCase() + data.name.slice(1)
+                } (#${data.id})</h2>
+                <img src="${data.sprites.front_default}" alt="${data.name}">
+                <div>
+                    <h3>타입</h3>
+                    ${typesHtml}
+                </div>
+            `;
+      }
+
+      // 포켓몬 타입에 따라 다른 배경색을 반환하는 헬퍼 함수
+      function getTypeColor(type) {
+        const colors = {
+          fire: "orangered",
+          water: "dodgerblue",
+          grass: "limegreen",
+          bug: "darkkhaki",
+          normal: "lightgray",
+          poison: "mediumpurple",
+          electric: "gold",
+          ground: "sandybrown",
+          fairy: "lightpink",
+          fighting: "indianred",
+          psychic: "hotpink",
+          rock: "darkgoldenrod",
+          ghost: "rebeccapurple",
+          ice: "lightcyan",
+          dragon: "slateblue",
+        };
+        return colors[type] || "gray";
+      }
+    </script>
+  </body>
+</html> -->
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>포켓몬 검색기</title>
+    <style>
+      @font-face {
+        font-family: "Simple";
+        src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2307-1@1.1/Danjo-bold-Regular.woff2")
+          format("woff2");
+        font-weight: normal;
+        font-display: swap;
+      }
+
+      body {
+        font-family: "Simple", sans-serif;
+      }
+
+      .container {
+        max-width: 500px;
+        margin: 40px auto;
+        padding: 20px;
+        border: 1px solid lightgray;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      input {
+        padding: 10px;
+        width: 60%;
+        margin-right: 10px;
+        border: 1px solid gray;
+        border-radius: 5px;
+      }
+
+      button {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        background-color: dodgerblue;
+        color: white;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: royalblue;
+      }
+
+      #result {
+        margin-top: 20px;
+      }
+
+      #result h2 {
+        margin: 10px 0;
+      }
+
+      #result img {
+        width: 150px;
+        height: 150px;
+        background-color: ghostwhite;
+        border-radius: 50%;
+      }
+
+      .type {
+        display: inline-block;
+        padding: 5px 10px;
+        margin: 5px;
+        border-radius: 15px;
+        color: white;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>포켓몬 정보 조회</h1>
+      <form id="search-form">
+        <input
+          type="text"
+          name="poke-name"
+          id="poke-name"
+          placeholder="포켓몬 이름을 입력해주세요"
+        />
+        <button id="search-form-btn">검색</button>
+      </form>
+      <div id="result">
+        <p id="message">검색해보세요!</p>
+        <div class="hide" id="poke-info">
+          <h2>
+            <span id="poke-koname">포켓몬</span> /
+            <span id="poke-enname">Pokemon</span>
+          </h2>
+          <img src="" alt="포켓몬 사진" />
+          <div id="poke-types"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      async function changeNameToId(name) {
+        if (localStorage.getItem("nameToId")) {
+          return JSON.parse(localStorage.getItem("nameToId"))[name];
+        }
+        const pokeLength = 1025;
+        const nameToId = {};
+        async function fetchPokeKor(id) {
+          const koNameResponse = await fetch(
+            `https://pokeapi.co/api/v2/pokemon-species/${id}`
+          );
+          if (!koNameResponse.ok) throw new Error("존재하지 않는 포켓몬!");
+          const koNameData = await koNameResponse.json();
+          const { names } = koNameData;
+          const koNames = names.filter((x) => x.language.name === "ko");
+          const koName = koNames[0].name;
+          nameToId[koName] = id;
+        }
+        const promises = [];
+        for (let i = 1; i < pokeLength; i++) {
+          promises.push(fetchPokeKor(i));
+        }
+        await Promise.all(promises);
+        localStorage.setItem("nameToId", JSON.stringify(nameToId));
+        return nameToId[name];
+      }
+
+      async function searchPoke(event) {
+        event.preventDefault();
+        const name = document.querySelector("#poke-name").value;
+        if (!name) {
+          alert("포켓몬 이름을 입력해주세요!");
+          return;
+        }
+        await searchName(name);
+      }
+
+      async function searchName(name) {
+        const pokeNo = await changeNameToId(name);
+
+        const response = await fetch(
+          `https://pokeapi.co/api/v2/pokemon/${pokeNo}`
+        );
+        if (!response.ok) throw new Error("존재하지 않는 포켓몬!");
+
+        const data = await response.json();
+        const { sprites } = data;
+        const { front_default } = sprites;
+        document
+          .querySelector("#result img")
+          .setAttribute("src", front_default);
+
+        const koNameResponse = await fetch(
+          `https://pokeapi.co/api/v2/pokemon-species/${pokeNo}`
+        );
+        if (!koNameResponse.ok) throw new Error("존재하지 않는 포켓몬!");
+        const koNameData = await koNameResponse.json();
+        const { names } = koNameData;
+        const koNames = names.filter((x) => x.language.name === "ko");
+        const koName = koNames[0].name;
+
+        document.querySelector("#poke-koname").textContent = koName;
+        document.querySelector("#poke-enname").textContent = data.name;
+
+        // 타입 표시
+        const typesHtml = data.types
+          .map(
+            (typeInfo) =>
+              `<span class="type" style="background-color: ${getTypeColor(
+                typeInfo.type.name
+              )}">${typeInfo.type.name}</span>`
+          )
+          .join(" ");
+        document.querySelector("#poke-types").innerHTML =
+          "<h3>타입</h3>" + typesHtml;
+
+        document.querySelector("#poke-info").classList.remove("hide");
+        document.querySelector("#message").classList.add("hide");
+
+        localStorage.setItem("memory", name);
+      }
+
+      function getTypeColor(type) {
+        const colors = {
+          fire: "orangered",
+          water: "dodgerblue",
+          grass: "limegreen",
+          bug: "darkkhaki",
+          normal: "lightgray",
+          poison: "mediumpurple",
+          electric: "gold",
+          ground: "sandybrown",
+          fairy: "lightpink",
+          fighting: "indianred",
+          psychic: "hotpink",
+          rock: "darkgoldenrod",
+          ghost: "rebeccapurple",
+          ice: "lightcyan",
+          dragon: "slateblue",
+          steel: "silver",
+          dark: "black",
+          flying: "skyblue",
+        };
+        return colors[type] || "gray";
+      }
+
+      const searchForm = document.querySelector("#search-form");
+      searchForm.addEventListener("submit", searchPoke);
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const memory = localStorage.getItem("memory");
+        if (!memory) return;
+        await searchName(memory);
+        document.querySelector("#poke-name").value = memory;
+      });
+    </script>
+  </body>
+</html>

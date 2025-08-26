@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pocketmon Searcher</title>
+    <style>
+      /* section */
+      section {
+        margin: 2rem 1rem;
+      }
+      /* controller */
+      #search-form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        align-items: center;
+      }
+      #search-form * {
+        width: 240px;
+        margin: 0;
+        padding: 0.3rem;
+        border: 1px solid grey;
+        border-radius: 0.3rem;
+      }
+      /* container */
+      #container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="controller">
+      <form id="search-form">
+        <input type="text" name="poke-name" placeholder="이름을 입력해주세요" />
+        <button id="search-form-btn"">검색</button>
+      </form>
+    </section>
+    <section id="container">
+      <div><strong>이름</strong> : <span id="poke-koname">포켓몬</span></div>
+      <img src="" alt="포켓몬 사진" />
+    </section>
+    <script>
+      async function changeNameToId(name) {
+        const pokeLength = 1025;
+        const nameToId = {};
+        for (let i = 1; i <= pokeLength; i++) {
+            // 한글 이름 찾기
+            const koNameResponse = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokeNum}`);
+            if (!koNameResponse.ok) throw new Error("존재하지 않는 포켓몬!");
+            const koNameData = await koNameResponse.json();
+            const { names } = koNameData;
+            console.log(names);
+            const koNames = names.filter((x) => x.language.name === "ko");
+            nameToId[koNames] = i; 
+        }
+        console.log(nameToId);
+        return id;
+      }
+
+      async function searchPoke(event) {
+        event.preventDefault(); // 폼 기본 작용 없애기
+        // https://pokeapi.co/api/v2/pokemon/{id or name}/
+
+        // 포켓몬 랜덤 번호
+        const pokeNum = Math.ceil(Math.random() * 1025);
+        const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokeNum}`);
+        if (!response.ok) throw new Error("존재하지 않는 포켓몬!");
+
+        // 이미지 찾기
+        const data = await response.json();
+        console.log(Object.keys(data));
+        const { sprites } = data;
+        const { front_default } = sprites;
+        console.log(front_default); 
+        document.querySelector("#container img").setAttribute("src", front_default);
+
+        // 한글 이름 찾기
+        const koNameResponse = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokeNum}`);
+        if (!koNameResponse.ok) throw new Error("존재하지 않는 포켓몬!");
+        const koNameData = await koNameResponse.json();
+        const { names } = koNameData;
+        console.log(names);
+        const koNames = names.filter((x) => x.language.name === "ko");
+        console.log(koNames)
+        const koName = koNames[0].name;
+        console.log(koName);        
+        document.querySelector("#poke-koname").textContent = koName;
+      }
+
+      // submit은 form에 넣는 것
+      const searchForm = document.querySelector("#search-form");
+      searchForm.addEventListener("submit", searchPoke);
+    </script>
+  </body>
+</html>

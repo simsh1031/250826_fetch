@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>포켓몬 배틀 (검색 vs 야생)</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: #f6f7fb;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 16px;
+      }
+      #controller {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      #controller input,
+      #controller button {
+        padding: 10px;
+        border: 1px solid #bbb;
+        border-radius: 6px;
+        width: 280px;
+      }
+      #controller button {
+        width: 120px;
+        cursor: pointer;
+      }
+      .stage {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .box {
+        background: white;
+        border: 1px solid #e2e4ea;
+        border-radius: 12px;
+        padding: 18px;
+        min-height: 360px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        position: relative;
+        overflow: hidden;
+      }
+      .box h2 {
+        margin: 0 0 6px;
+      }
+      .name {
+        font-size: 18px;
+        font-weight: bold;
+        margin: 6px 0;
+      }
+      .sub {
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+      .sprite-wrap {
+        width: 180px;
+        height: 180px;
+        background: #f3f6ff;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        margin: 6px 0 10px;
+      }
+      .sprite {
+        width: 150px;
+        height: 150px;
+        image-rendering: pixelated;
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        transition: opacity 0.6s ease, transform 0.6s ease;
+      }
+      .show .sprite {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      .wild-enter {
+        opacity: 0;
+        transform: translateX(24px) scale(0.98);
+        transition: opacity 0.8s ease, transform 0.8s ease;
+      }
+      .wild-enter.show {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
+
+      .types {
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .type {
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 14px;
+        font-size: 12px;
+        text-transform: capitalize;
+      }
+      .vs {
+        text-align: center;
+        margin: 16px auto;
+        font-weight: bold;
+        font-size: 20px;
+      }
+      .result {
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 8px;
+      }
+      .hint {
+        text-align: center;
+        color: #777;
+        font-size: 13px;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>포켓몬 배틀</h1>
+      <div class="hint">
+        이름(영문/한글) 또는 번호로 검색하세요. 예) pikachu, 피카츄, 25
+      </div>
+    </header>
+
+    <section id="controller">
+      <input
+        id="poke-input"
+        type="text"
+        placeholder="이름(영문/한글) 또는 번호"
+      />
+      <button id="search-btn">검색</button>
+    </section>
+
+    <div class="stage">
+      <div class="box" id="my-box">
+        <h2>내 포켓몬</h2>
+        <div class="name" id="my-ko">-</div>
+        <div class="sub" id="my-en">-</div>
+        <div class="sprite-wrap"><img id="my-img" class="sprite" alt="" /></div>
+        <div class="types" id="my-types"></div>
+      </div>
+
+      <div class="box wild-enter" id="wild-box">
+        <h2>풀숲에서 야생의 포켓몬이 나타났다!</h2>
+        <div class="name" id="wild-ko">-</div>
+        <div class="sub" id="wild-en">-</div>
+        <div class="sprite-wrap">
+          <img id="wild-img" class="sprite" alt="" />
+        </div>
+        <div class="types" id="wild-types"></div>
+      </div>
+    </div>
+
+    <div class="vs" id="versus"></div>
+    <div class="result" id="battle-result"></div>
+
+    <script>
+      // ===== 공통 유틸 =====
+      const $ = (sel) => document.querySelector(sel);
+      const input = $("#poke-input");
+      const btn = $("#search-btn");
+      const myBox = $("#my-box");
+      const wildBox = $("#wild-box");
+      const versus = $("#versus");
+      const battleResult = $("#battle-result");
+
+      let wildTimer = null;
+
+      // 타입 색상
+      function typeColor(t) {
+        const c = {
+          normal: "#9ea0a1",
+          fire: "#ff7f0f",
+          water: "#2b7fff",
+          electric: "#f3c400",
+          grass: "#2dbf35",
+          ice: "#7cd5ff",
+          fighting: "#c44d4d",
+          poison: "#9b5aa5",
+          ground: "#d2b26f",
+          flying: "#92a9ff",
+          psychic: "#ff6fae",
+          bug: "#9db21d",
+          rock: "#b6922e",
+          ghost: "#6b5aa1",
+          dragon: "#6b78d6",
+          dark: "#5a5566",
+          steel: "#6f8a99",
+          fairy: "#ee99ee",
+        };
+        return c[t] || "#888";
+      }
+
+      // 타입 상성 (공격타입 -> 수비타입 = 배율)
+      const CHART = {
+        normal: { rock: 0.5, ghost: 0, steel: 0.5 },
+        fire: {
+          fire: 0.5,
+          water: 0.5,
+          grass: 2,
+          ice: 2,
+          bug: 2,
+          rock: 0.5,
+          dragon: 0.5,
+          steel: 2,
+        },
+        water: {
+          fire: 2,
+          water: 0.5,
+          grass: 0.5,
+          ground: 2,
+          rock: 2,
+          dragon: 0.5,
+        },
+        electric: {
+          water: 2,
+          electric: 0.5,
+          grass: 0.5,
+          ground: 0,
+          flying: 2,
+          dragon: 0.5,
+        },
+        grass: {
+          fire: 0.5,
+          water: 2,
+          grass: 0.5,
+          poison: 0.5,
+          ground: 2,
+          flying: 0.5,
+          bug: 0.5,
+          rock: 2,
+          dragon: 0.5,
+          steel: 0.5,
+        },
+        ice: {
+          fire: 0.5,
+          water: 0.5,
+          grass: 2,
+          ground: 2,
+          flying: 2,
+          dragon: 2,
+          steel: 0.5,
+          ice: 0.5,
+        },
+        fighting: {
+          normal: 2,
+          ice: 2,
+          rock: 2,
+          dark: 2,
+          steel: 2,
+          poison: 0.5,
+          flying: 0.5,
+          psychic: 0.5,
+          bug: 0.5,
+          fairy: 0.5,
+          ghost: 0,
+        },
+        poison: {
+          grass: 2,
+          fairy: 2,
+          poison: 0.5,
+          ground: 0.5,
+          rock: 0.5,
+          ghost: 0.5,
+          steel: 0,
+        },
+        ground: {
+          fire: 2,
+          electric: 2,
+          poison: 2,
+          rock: 2,
+          steel: 2,
+          grass: 0.5,
+          bug: 0.5,
+          flying: 0,
+        },
+        flying: {
+          grass: 2,
+          fighting: 2,
+          bug: 2,
+          electric: 0.5,
+          rock: 0.5,
+          steel: 0.5,
+        },
+        psychic: { fighting: 2, poison: 2, psychic: 0.5, steel: 0.5, dark: 0 },
+        bug: {
+          grass: 2,
+          psychic: 2,
+          dark: 2,
+          fire: 0.5,
+          fighting: 0.5,
+          poison: 0.5,
+          flying: 0.5,
+          ghost: 0.5,
+          rock: 0.5,
+          steel: 0.5,
+          fairy: 0.5,
+        },
+        rock: {
+          fire: 2,
+          ice: 2,
+          flying: 2,
+          bug: 2,
+          fighting: 0.5,
+          ground: 0.5,
+          steel: 0.5,
+        },
+        ghost: { psychic: 2, ghost: 2, dark: 0.5, normal: 0 },
+        dragon: { dragon: 2, steel: 0.5, fairy: 0 },
+        dark: { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 },
+        steel: {
+          rock: 2,
+          ice: 2,
+          fairy: 2,
+          fire: 0.5,
+          water: 0.5,
+          electric: 0.5,
+          steel: 0.5,
+        },
+        fairy: {
+          fighting: 2,
+          dragon: 2,
+          dark: 2,
+          fire: 0.5,
+          poison: 0.5,
+          steel: 0.5,
+        },
+      };
+
+      function bestMultiplier(attackerTypes, defenderTypes) {
+        // 공격자가 가진 각 타입 중 가장 유리한 배율을 선택
+        let best = 1;
+        for (const atk of attackerTypes) {
+          let m = 1;
+          for (const def of defenderTypes) {
+            const k =
+              CHART[atk] && CHART[atk][def] !== undefined ? CHART[atk][def] : 1;
+            m *= k;
+          }
+          if (m > best) best = m;
+          if (m === 0) return 0; // 효과 없음이 최우선
+        }
+        return best;
+      }
+
+      function emoji(mult) {
+        if (mult === 0) return "Χ (효과 없음)";
+        if (mult > 1) return "● (효과 굉장함)";
+        if (mult < 1) return "△ (효과 별로)";
+        return "보통 효과";
+      }
+
+      function resetUI() {
+        if (wildTimer) {
+          clearTimeout(wildTimer);
+          wildTimer = null;
+        }
+        // 초기화
+        ["#my-ko", "#my-en", "#wild-ko", "#wild-en"].forEach(
+          (sel) => ($(sel).textContent = "-")
+        );
+        $("#my-img").src = "";
+        $("#wild-img").src = "";
+        $("#my-types").innerHTML = "";
+        $("#wild-types").innerHTML = "";
+        myBox.classList.remove("show");
+        wildBox.classList.remove("show");
+        versus.textContent = "";
+        battleResult.textContent = "";
+      }
+
+      // ===== 이름(한글/영문)/번호 처리 =====
+      async function getIdFromKorean(nameKo) {
+        const cache = localStorage.getItem("koNameToId");
+        if (cache) {
+          const map = JSON.parse(cache);
+          return map[nameKo];
+        }
+        // 최초 1회: 전체 종의 한국어 이름 사전 구성 후 캐시
+        const limit = 1025;
+        const map = {};
+        async function fetchOne(id) {
+          const r = await fetch(
+            `https://pokeapi.co/api/v2/pokemon-species/${id}`
+          );
+          if (!r.ok) return;
+          const d = await r.json();
+          const ko =
+            d.names &&
+            d.names.find((n) => n.language && n.language.name === "ko");
+          if (ko) map[ko.name] = id;
+        }
+        const jobs = [];
+        for (let i = 1; i <= limit; i++) jobs.push(fetchOne(i));
+        await Promise.all(jobs);
+        localStorage.setItem("koNameToId", JSON.stringify(map));
+        return map[nameKo];
+      }
+
+      async function parseInputToIdOrName(v) {
+        const raw = v.trim();
+        if (/^\d+$/.test(raw)) return raw; // 숫자(번호)
+        if (/^[a-z0-9-]+$/i.test(raw)) return raw.toLowerCase(); // 영문 이름
+        // 한글 이름
+        const id = await getIdFromKorean(raw);
+        if (!id) throw new Error("해당 한글 이름의 포켓몬을 찾을 수 없습니다.");
+        return String(id);
+      }
+
+      // ===== 포켓몬 불러오기 =====
+      async function fetchPokemon(pokeKey) {
+        const r = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokeKey}`);
+        if (!r.ok) throw new Error("포켓몬을 찾을 수 없습니다.");
+        const d = await r.json();
+        // 한국어 이름
+        const rs = await fetch(
+          `https://pokeapi.co/api/v2/pokemon-species/${d.id}`
+        );
+        const ds = await rs.json();
+        const koEntry = ds.names.find(
+          (x) => x.language && x.language.name === "ko"
+        );
+        const koName = koEntry ? koEntry.name : d.name;
+        return {
+          id: d.id,
+          en: d.name,
+          ko: koName,
+          img: d.sprites && d.sprites.front_default,
+          types: d.types.map((t) => t.type.name),
+        };
+      }
+
+      function renderPokemon(side, info) {
+        if (side === "my") {
+          $("#my-ko").textContent = `${info.ko} (#${info.id})`;
+          $("#my-en").textContent = info.en;
+          $("#my-img").src = info.img || "";
+          $("#my-types").innerHTML = info.types
+            .map(
+              (t) =>
+                `<span class="type" style="background:${typeColor(
+                  t
+                )}">${t}</span>`
+            )
+            .join("");
+          myBox.classList.add("show");
+        } else {
+          $("#wild-ko").textContent = `${info.ko} (#${info.id})`;
+          $("#wild-en").textContent = info.en;
+          $("#wild-img").src = info.img || "";
+          $("#wild-types").innerHTML = info.types
+            .map(
+              (t) =>
+                `<span class="type" style="background:${typeColor(
+                  t
+                )}">${t}</span>`
+            )
+            .join("");
+          wildBox.classList.add("show");
+        }
+      }
+
+      function doBattle(myTypes, wildTypes) {
+        const myBest = bestMultiplier(myTypes, wildTypes);
+        const wildBest = bestMultiplier(wildTypes, myTypes);
+
+        versus.textContent = `내 공격: ${emoji(myBest)}  vs  야생 공격: ${emoji(
+          wildBest
+        )}`;
+
+        if (myBest > wildBest) {
+          battleResult.textContent = "결과: 내 포켓몬 승리!";
+        } else if (myBest < wildBest) {
+          battleResult.textContent = "결과: 야생 포켓몬 승리!";
+        } else {
+          battleResult.textContent = "결과: 무승부!";
+        }
+      }
+
+      // ===== 흐름 =====
+      async function startBattleFlow() {
+        try {
+          resetUI();
+          const key = await parseInputToIdOrName(input.value);
+          const me = await fetchPokemon(key);
+          renderPokemon("my", me);
+
+          // 3초 뒤 야생 등장
+          wildTimer = setTimeout(async () => {
+            const wildId = Math.floor(Math.random() * 1025) + 1;
+            try {
+              const wild = await fetchPokemon(String(wildId));
+              renderPokemon("wild", wild);
+              doBattle(me.types, wild.types);
+            } catch (e) {
+              battleResult.textContent = "야생 포켓몬을 불러오지 못했습니다.";
+              console.error(e);
+            }
+          }, 1500);
+        } catch (err) {
+          alert(err.message || "오류가 발생했습니다.");
+          console.error(err);
+        }
+      }
+
+      btn.addEventListener("click", startBattleFlow);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") startBattleFlow();
+      });
+    </script>
+  </body>
+</html>
