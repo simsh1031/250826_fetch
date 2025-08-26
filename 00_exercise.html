@@ -4,11 +4,18 @@
     <meta charset="UTF-8" />
     <title>포켓몬 배틀 (검색 vs 야생)</title>
     <style>
+      @font-face {
+        font-family: "Cafe24-Surround";
+        src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff")
+          format("woff");
+        font-weight: normal;
+        font-display: swap;
+      }
       * {
         box-sizing: border-box;
       }
       body {
-        font-family: sans-serif;
+        font-family: "Cafe24-Surround", sans-serif;
         margin: 0;
         padding: 20px;
         background: #f6f7fb;
@@ -34,6 +41,7 @@
         width: 120px;
         cursor: pointer;
       }
+
       .stage {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -142,11 +150,7 @@
     </header>
 
     <section id="controller">
-      <input
-        id="poke-input"
-        type="text"
-        placeholder="이름(영문/한글) 또는 번호"
-      />
+      <input id="poke-input" type="text" placeholder="나의 포켓몬은?" />
       <button id="search-btn">검색</button>
     </section>
 
